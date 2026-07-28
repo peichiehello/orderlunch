@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>辦公室團購點單系統｜月結版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="pb-24">
+
+    <script>
+        /* ============ 資料層 ============ */
+        const STORAGE_KEY = 'office_lunch_v2';
+
+        let defaultPeople = [
+            '總經理', '鍾協理', '顧協理', '依潔', '文珍', '珮潔', '香如', '雯琪',
+            '孟璇', '筑喬', '靜慧', '昊承', '琇如', '憶雯', '尉珉', '慧玲', '俞今'
+        ];
+
+        const restaurantsData = {
+            "蛋白盒子": [
+                { category: "中華料理 美麻婆", items: [ {name: "麻婆雞胸(餐盒)", price: 135}, {name: "麻婆牛五花(餐盒)", price: 145} ] },
+                { category: "香煎雞胸 (多種口味)", items: [ {name: "香煎雞胸(餐盒)", price: 125} ] },
+                { category: "餐盒系列 (自帶容器折5元)", items: [
+                    {name: "四川麻辣雞胸", price: 135}, {name: "青蔥海鹽雞胸", price: 135},
+                    {name: "檸檬雞腿排", price: 135}, {name: "紐奧良雞腿排", price: 135},
+                    {name: "麻油雞腿排", price: 145}, {name: "打拋豬", price: 125},
+                    {name: "打拋牛", price: 165}, {name: "正韓泡菜豬", price: 135},
+                    {name: "壽喜牛五花", price: 140}, {name: "燒肉店漢堡排", price: 155},
+                    {name: "私房老饕肉", price: 165}, {name: "減鹽味噌烤鱸魚", price: 160},
+                    {name: "薄鹽烤鮭魚", price: 180}, {name: "五香藥膳嫩雞腿", price: 120},
+                    {name: "素排骨(椒鹽/五辛蛋奶素)", price: 130}, {name: "素排骨(燒肉醬/五辛蛋奶素)", price: 140}
+                ] }
+            ],
+            "豐米便當": [
+                { category: "便當系列", items: [
+                    {name: "菜飯便當", price: 70}, {name: "白肉飯", price: 85}, {name: "油雞飯", price: 90},
+                    {name: "日式花枝排飯", price: 85}, {name: "魚排飯", price: 85}, {name: "雞排飯", price: 95},
+                    {name: "檸檬雞柳飯", price: 85}, {name: "燒肉飯", price: 85}, {name: "鐵路便當", price: 100},
+                    {name: "滷棒棒腿飯", price: 85}, {name: "哈啦雞腿排飯", price: 85}, {name: "雞腿飯", price: 110},
+                    {name: "蒲燒鯛魚飯", price: 85}, {name: "焢肉飯", price: 90}, {name: "鐵路雞腿飯", price: 120},
+                    {name: "招牌飯", price: 85}, {name: "三杯雞排", price: 90}, {name: "豐米特餐", price: 140},
+                    {name: "香腸飯", price: 85}, {name: "炸排骨飯", price: 90}, {name: "特餐雞腿飯", price: 160},
+                    {name: "滷排骨飯", price: 90}
+                ] }
+            ],
+            "三國東風": [
+                { category: "英雄飽肚便當", items: [
+                    {name: "關羽雞腿", price: 120}, {name: "子龍雞排", price: 110}, {name: "三杯雞丁", price: 95},
+                    {name: "司馬懿回鍋肉", price: 100}, {name: "孔明薑絲牛肉", price: 100}, {name: "黃忠燒肉", price: 100},
+                    {name: "貂蟬蒜泥白肉", price: 100}, {name: "小喬蜜汁排骨", price: 100}, {name: "劉備排骨", price: 100},
+                    {name: "董卓宮保肉片", price: 95}, {name: "客家控肉", price: 100}, {name: "許褚蔥油雞", price: 95},
+                    {name: "蔥爆肉絲", price: 90}, {name: "合菜", price: 85}, {name: "青菜飯", price: 80}
+                ] }
+            ],
+            "燒臘食堂": [
+                { category: "便當類 (無付湯、飲料)", items: [
+                    {name: "黃金魚排飯", price: 75}, {name: "蜜汁香腸飯", price: 75}, {name: "香酥排骨飯", price: 80},
+                    {name: "無骨雞排飯", price: 80}, {name: "珍珠蝦捲飯", price: 80}, {name: "蜜汁烤雞飯", price: 85},
+                    {name: "蜜汁叉燒飯", price: 85}, {name: "玫瑰油雞飯", price: 85}, {name: "明爐燒鴨飯", price: 95},
+                    {name: "脆皮燒肉飯", price: 95}, {name: "叉燒香腸飯", price: 90}, {name: "叉燒油雞飯", price: 90},
+                    {name: "叉燒烤雞飯", price: 90}, {name: "香腸油雞飯", price: 90}, {name: "香腸烤雞飯", price: 90},
+                    {name: "油雞烤雞飯", price: 90}, {name: "廣式臘味飯", price: 90}, {name: "叉燒燒鴨飯", price: 100},
+                    {name: "叉燒燒肉飯", price: 100}, {name: "香腸燒鴨飯", price: 100}, {name: "香腸燒肉飯", price: 100},
+                    {name: "烤雞燒鴨飯", price: 100}, {name: "烤雞燒肉飯", price: 100}, {name: "油雞燒鴨飯", price: 100},
+                    {name: "燒肉油雞飯", price: 100}, {name: "燒肉燒鴨飯", price: 110}, {name: "招牌三寶飯", price: 100},
+                    {name: "玫瑰雞腿飯", price: 100}, {name: "蜜汁雞腿飯", price: 100}, {name: "馳名三燒飯", price: 110},
+                    {name: "明爐鴨腿飯", price: 115}, {name: "王牌四寶飯", price: 120}, {name: "金牌五寶飯", price: 130}
+                ] },
+                { category: "炒飯類 (大份)", items: [
+                    {name: "玉米蛋炒飯", price: 60}, {name: "肉絲蛋炒飯", price: 80}, {name: "香腸蛋炒飯", price: 80},
+                    {name: "叉燒蛋炒飯", price: 80}, {name: "油雞蛋炒飯", price: 90}, {name: "燒鴨蛋炒飯", price: 90},
+                    {name: "燒肉蛋炒飯", price: 90}, {name: "臘味蛋炒飯", price: 90}, {name: "蝦仁蛋炒飯", price: 100},
+                    {name: "三寶蛋炒飯", price: 100}, {name: "四寶蛋炒飯", price: 110}, {name: "五寶蛋炒飯", price: 120}
+                ] }
+            ],
+            "上野店燒肉": [
+                { category: "上野店推薦", items: [
+                    { name: "新鮮！超厚切牛肝", price: 1078, desc: "新鮮！超厚切りレバ" },
+                    { name: "帶脂上等牛心鹽味炙烤", price: 858, desc: "希少部位！脂付き上ハツ塩炙り焼き" },
+                    { name: "豬頸肉 (附梅肉醬)", price: 858, desc: "豚トロ" },
+                    { name: "帶脂內臟", price: 748, desc: "脂付きホルモン" },
+                    { name: "下巴肉", price: 638, desc: "あご肉" }
+                ]},
+                { category: "精肉系 (瘦肉為主)", items: [
+                    { name: "牛五花", price: 1078, desc: "カルビ" },
+                    { name: "角切菲力", price: 1078, desc: "ヒレカク" },
+                    { name: "鹽味牛舌", price: 1188, desc: "タン塩" }
+                ]}
+            ],
+            "蒜霸王": [
+                { category: "主食區", items: [
+                    {name: "特製涼麵(原味)", price: 55}, {name: "特製涼麵(辣味)", price: 55},
+                    {name: "特製涼麵(原味)大", price: 65}, {name: "特製涼麵(辣味)大", price: 65},
+                    {name: "蒜味肉羹麵", price: 75}, {name: "蒜味肉羹麵(加大)", price: 85},
+                    {name: "蒜味肉羹粄條", price: 75}, {name: "蒜味肉羹粄條(加大)", price: 85},
+                    {name: "蒜味肉羹米粉", price: 75}, {name: "蒜味肉羹米粉(加大)", price: 85},
+                    {name: "蒜味肉羹飯", price: 75}, {name: "蒜味肉羹飯(加大)", price: 85},
+                    {name: "古早味乾麵", price: 55}, {name: "古早味乾麵(加大)", price: 65},
+                    {name: "乾粄條", price: 55}, {name: "乾粄條(加大)", price: 65},
+                    {name: "乾米粉", price: 55}, {name: "乾米粉(加大)", price: 65},
+                    {name: "滷肉飯", price: 40}
+                ]},
+                { category: "湯品類", items: [
+                    {name: "蒜味肉羹湯", price: 65}, {name: "味噌湯", price: 30},
+                    {name: "味噌蛋花湯", price: 40}, {name: "味噌貢丸湯", price: 45},
+                    {name: "味噌綜合湯", price: 55, desc: "蛋+貢丸"}
+                ]},
+                { category: "飲品類", items: [
+                    {name: "奶茶", price: 35}, {name: "紅茶", price: 25}
+                ]},
+                { category: "小菜類", items: [
+                    {name: "燙小卷", price: 90}, {name: "蒜泥白肉", price: 60},
+                    {name: "燙青菜", price: 40}, {name: "油豆腐", price: 35},
+                    {name: "滷蛋", price: 15}, {name: "鯊魚煙", price: 90},
+                    {name: "麻油粉肝", price: 50}, {name: "豬耳絲", price: 50},
+                    {name: "黃金泡菜", price: 45}, {name: "榨菜蜇絲", price: 45},
+                    {name: "涼拌干絲", price: 45}, {name: "煙燻豆包", price: 45},
+                    {name: "椒香川耳", price: 45}, {name: "裙帶絲", price: 45}
+                ]}
+            ]
+        };
+
+        // 台灣 2026(115) 國定假日（含補假），格式 MM-DD
+        const TW_HOLIDAYS_2026 = {
+            '01-01': '元旦',
+            '02-14': '春節', '02-15': '春節', '02-16': '除夕', '02-17': '春節',
+            '02-18': '春節', '02-19': '春節', '02-20': '小年夜補假', '02-21': '春節', '02-22': '春節',
+            '02-27': '和平紀念日補假', '02-28': '和平紀念日',
+            '04-03': '兒童節補假', '04-04': '兒童節', '04-05': '清明節', '04-06': '清明節補假',
+            '05-01': '勞動節',
+            '06-19': '端午節',
+            '09-25': '中秋節', '09-28': '教師節',
+            '10-09': '國慶日補假', '10-10': '國慶日',
+            '10-25': '光復節', '10-26': '光復節補假',
+            '12-25': '行憲紀念日'
+        };
+
+        const MAX_SUBSIDY = 120; // 一般員工補助上限
+
+        /* ---- 全域狀態（含持久化） ---- */
+        let state = {
+            people: [...defaultPeople],
+            // orders 結構: { "2026-07-01": [ {id, itemName, price, person, restaurant} ] }
+            orders: {}
+        };
+
+        let currentRestaurant = "蛋白盒子";
+        let currentDate = toDateStr(new Date()); // YYYY-MM-DD
+
+        function toDateStr(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.warn('localStorage 無法使用（可能在預覽環境），資料僅存於本次工作階段。', e);
+            }
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.people) state.people = parsed.people;
+                    if (parsed.orders) state.orders = parsed.orders;
+                }
+            } catch (e) {
+                console.warn('讀取 localStorage 失敗', e);
+            }
+        }
+
+        function getTodayOrders() {
+            if (!state.orders[currentDate]) state.orders[currentDate] = [];
+            return state.orders[currentDate];
+        }
+
+        function isHoliday(dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            const wd = d.getDay(); // 0=日 6=六
+            if (wd === 0 || wd === 6) return { holiday: true, name: '週末' };
+            const md = dateStr.slice(5);
+            if (TW_HOLIDAYS_2026[md]) return { holiday: true, name: TW_HOLIDAYS_2026[md] };
+            return { holiday: false, name: '' };
+        }
+    </script>
+
+    <div class="max-w-4xl mx-auto pt-4 px-4">
+
+        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-4">
+            <div class="bg-indigo-600 text-white p-5 flex justify-between items-center flex-wrap gap-3">
+                <h1 class="text-xl sm:text-2xl font-bold tracking-wider">🍱 辦公室團購點單系統</h1>
+                <div class="flex items-center gap-2 bg-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-500 shadow-inner">
+                    <label for="global-person" class="text-sm font-medium whitespace-nowrap">目前點餐人:</label>
+                    <select id="global-person" class="bg-white text-indigo-900 text-sm font-bold rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white"></select>
+                </div>
+            </div>
+
+            <!-- 日期列 -->
+            <div class="bg-indigo-100 px-5 py-3 flex flex-wrap items-center gap-3 border-b border-indigo-200">
+                <label class="text-sm font-bold text-indigo-800 whitespace-nowrap">📅 作業日期：</label>
+                <input type="date" id="work-date" class="border border-indigo-300 rounded px-3 py-1.5 text-sm font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <span id="date-badge" class="text-sm font-medium"></span>
+                <span id="date-count" class="ml-auto text-sm text-indigo-700 font-medium"></span>
+            </div>
+
+            <!-- 餐廳切換標籤 -->
+            <div class="flex overflow-x-auto hide-scrollbar bg-indigo-50 border-b border-indigo-100" id="restaurant-tabs"></div>
+        </div>
+
+        <!-- 後台管理摺疊區 -->
+        <div class="bg-white rounded-xl shadow-md mb-6 overflow-hidden">
+            <button onclick="toggleAdmin()" class="w-full flex justify-between items-center px-5 py-3 bg-gray-800 hover:bg-gray-700 text-white font-bold transition-colors">
+                <span>⚙️ 後台管理 / 月結匯出</span>
+                <span id="admin-arrow">▼</span>
+            </button>
+            <div id="admin-panel" class="hidden p-5 space-y-6 border-t border-gray-100">
+
+                <!-- 月結匯出 -->
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-2">📊 月結匯出</h3>
+                    <p class="text-xs text-gray-500 mb-3">選擇月份，匯出「日結會計表 × 整月」。三種金額表（總額 / 公司餐費 / 自付）各一張工作表，放假日自動標示。</p>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <input type="month" id="export-month" class="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                        <button onclick="exportMonthlyDaily()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold transition-colors">匯出整月日結表 (CSV)</button>
+                        <button onclick="exportMonthlyGrid()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-bold transition-colors">匯出月報表網格 (CSV)</button>
+                        <button onclick="previewMonth()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold transition-colors">預覽本月</button>
+                    </div>
+                    <div id="month-preview" class="mt-4 text-sm"></div>
+                </div>
+
+                <!-- 資料備份 -->
+                <div class="border-t border-gray-100 pt-5">
+                    <h3 class="font-bold text-gray-800 mb-2">💾 資料備份 / 還原</h3>
+                    <p class="text-xs text-gray-500 mb-3">資料自動存於本瀏覽器。建議每週匯出一份備份到 Google Drive；換電腦時可用備份還原。</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="exportBackup()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold transition-colors">匯出備份 (JSON)</button>
+                        <label class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-bold transition-colors cursor-pointer">
+                            匯入還原 (JSON)
+                            <input type="file" accept=".json" onchange="importBackup(event)" class="hidden">
+                        </label>
+                        <button onclick="clearMonthConfirm()" class="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded text-sm font-bold transition-colors border border-red-200">清空某月資料</button>
+                    </div>
+                </div>
+
+                <!-- 人員管理 -->
+                <div class="border-t border-gray-100 pt-5">
+                    <h3 class="font-bold text-gray-800 mb-2">👥 人員管理</h3>
+                    <p class="text-xs text-gray-500 mb-3">點姓名可改名、點 × 可刪除。改名會同步所有日期的既有點單。</p>
+                    <div class="flex gap-2 mb-3">
+                        <input id="new-person-input" type="text" placeholder="輸入新人員姓名" onkeydown="if(event.key==='Enter')addPerson()"
+                               class="flex-grow border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                        <button onclick="addPerson()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded font-bold transition-colors">新增</button>
+                    </div>
+                    <div id="people-manage-list" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- 菜單轉文字 -->
+                <div class="border-t border-gray-100 pt-5">
+                    <h3 class="font-bold text-gray-800 mb-2">📄 菜單轉文字（目前餐廳）</h3>
+                    <textarea id="menu-text-output" rows="6" readonly class="w-full border border-gray-300 rounded p-2 text-xs font-mono bg-gray-50 focus:outline-none"></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="generateMenuText()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold transition-colors">產生文字</button>
+                        <button onclick="copyMenuText()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-bold transition-colors">複製</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 假日提示 -->
+        <div id="holiday-banner" class="hidden bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-5 py-3 mb-4 text-sm font-medium"></div>
+
+        <!-- 菜單顯示區 -->
+        <div id="menu-container" class="space-y-6"></div>
+
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40 p-4">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <p class="text-sm text-gray-500">本日總計 (<span id="footer-date"></span>)</p>
+                <p class="text-2xl font-bold text-indigo-600" id="total-price">$0</p>
+            </div>
+            <button onclick="openSummaryModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold shadow transition-colors flex items-center gap-2">
+                查看明細與結帳
+                <span id="cart-count" class="bg-white text-indigo-600 rounded-full w-6 h-6 flex items-center justify-center text-xs ml-1">0</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded shadow-lg transition-all duration-300 translate-y-[-150%] opacity-0 z-50 flex items-center gap-2">
+        <span id="toast-icon"></span><span id="toast-msg">訊息</span>
+    </div>
+
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 px-4">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <h3 class="text-lg font-bold mb-2">確認切換餐廳？</h3>
+            <p class="text-gray-600 mb-6">切換餐廳將清空「本日」已點餐點（<span id="confirm-count" class="font-bold text-red-500"></span>份），確定？</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="cancelSwitch()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded text-gray-700">取消</button>
+                <button onclick="confirmSwitch()" class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded text-white font-bold">確定清空並切換</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="summary-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 px-4 py-10">
+        <div class="bg-white rounded-xl w-full max-w-3xl max-h-full flex flex-col shadow-2xl">
+            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-indigo-50 rounded-t-xl">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">日結會計表</h2>
+                    <p class="text-sm text-indigo-600 font-medium mt-1"><span id="summary-restaurant-name"></span> ｜ <span id="summary-date"></span></p>
+                </div>
+                <button onclick="closeSummaryModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="flex border-b border-gray-200">
+                <button id="tab-btn-item" onclick="switchSummaryTab('item')" class="flex-1 py-3 text-center font-bold text-indigo-600 border-b-2 border-indigo-600 transition-colors">依餐點統計</button>
+                <button id="tab-btn-person" onclick="switchSummaryTab('person')" class="flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">依人員結帳</button>
+            </div>
+            <div id="summary-content" class="p-5 flex-grow overflow-y-auto"></div>
+            <div class="p-5 border-t border-gray-200 bg-white rounded-b-xl flex justify-between items-center flex-wrap gap-3">
+                <div class="text-lg font-bold text-gray-800">本日總計: <span class="text-indigo-600 text-2xl" id="summary-total-price">$0</span></div>
+                <div class="flex gap-2">
+                    <button onclick="exportDayCSV()" class="px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-bold shadow flex items-center gap-2 transition-colors text-sm">
+                        匯出本日 (CSV)
+                    </button>
+                    <button onclick="copySummary()" class="px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold shadow flex items-center gap-2 transition-colors text-sm">
+                        複製明細
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pendingRestaurantSwitch = null;
+        let currentSummaryView = 'item';
+        let currentSummaryText = '';
+
+        function calculatePayment(personName, total) {
+            if (personName === '總經理') return { selfPay: 0, companyPays: total }; // 總經理全額補助無上限
+            if (personName === '琇如') return { selfPay: total, companyPays: 0 };    // 琇如全額自付
+            const companyPays = Math.min(total, MAX_SUBSIDY);
+            return { selfPay: total - companyPays, companyPays };
+        }
+
+        function refreshPeopleSelect() {
+            const sel = document.getElementById('global-person');
+            const prev = sel.value;
+            let html = '<option value="" disabled selected>請選擇點單人</option>';
+            state.people.forEach(p => html += `<option value="${p}">${p}</option>`);
+            sel.innerHTML = html;
+            if (state.people.includes(prev)) sel.value = prev;
+        }
+
+        function showToastMsg(msg, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerHTML = isSuccess ? '✅' : '⚠️';
+            toast.classList.remove('translate-y-[-150%]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-[-150%]', 'opacity-0');
+            }, 2500);
+        }
+
+        /* ---- 日期 ---- */
+        function onDateChange() {
+            currentDate = document.getElementById('work-date').value;
+            renderDateBadge();
+            renderMenu();
+            updateTotal();
+        }
+
+        function renderDateBadge() {
+            const badge = document.getElementById('date-badge');
+            const banner = document.getElementById('holiday-banner');
+            const info = isHoliday(currentDate);
+            const wdMap = ['日','一','二','三','四','五','六'];
+            const d = new Date(currentDate + 'T00:00:00');
+            const wd = wdMap[d.getDay()];
+            if (info.holiday) {
+                badge.innerHTML = `<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded font-bold">週${wd}・${info.name}（放假）</span>`;
+                banner.classList.remove('hidden');
+                banner.innerHTML = `⚠️ ${currentDate}（週${wd}）為<b>${info.name}</b>，見紅就休。此日通常不點餐，若仍要點餐可照常操作。`;
+            } else {
+                badge.innerHTML = `<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded font-bold">週${wd}・上班日</span>`;
+                banner.classList.add('hidden');
+            }
+            document.getElementById('footer-date').innerText = currentDate;
+        }
+
+        /* ---- 餐廳 tabs ---- */
+        function initTabs() {
+            const tabsContainer = document.getElementById('restaurant-tabs');
+            let html = '';
+            Object.keys(restaurantsData).forEach(name => {
+                const isActive = name === currentRestaurant;
+                html += `<button onclick="requestSwitchRestaurant('${name}')" class="px-6 py-4 whitespace-nowrap font-bold text-sm transition-colors border-b-2 focus:outline-none ${isActive ? 'text-indigo-600 border-indigo-600 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-indigo-100/50'}">${name}</button>`;
+            });
+            tabsContainer.innerHTML = html;
+            refreshPeopleSelect();
+        }
+
+        function requestSwitchRestaurant(newRes) {
+            if (newRes === currentRestaurant) return;
+            const todays = getTodayOrders();
+            if (todays.length > 0) {
+                pendingRestaurantSwitch = newRes;
+                document.getElementById('confirm-count').innerText = todays.length;
+                document.getElementById('confirm-modal').classList.remove('hidden');
+                document.getElementById('confirm-modal').classList.add('flex');
+            } else {
+                executeSwitch(newRes);
+            }
+        }
+        function cancelSwitch() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            document.getElementById('confirm-modal').classList.remove('flex');
+            pendingRestaurantSwitch = null;
+        }
+        function confirmSwitch() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            document.getElementById('confirm-modal').classList.remove('flex');
+            state.orders[currentDate] = [];
+            saveState();
+            updateTotal();
+            executeSwitch(pendingRestaurantSwitch);
+            pendingRestaurantSwitch = null;
+        }
+        function executeSwitch(newRes) {
+            currentRestaurant = newRes;
+            initTabs();
+            renderMenu();
+        }
+
+        /* ---- 菜單渲染 ---- */
+        function renderMenu() {
+            const container = document.getElementById('menu-container');
+            const data = restaurantsData[currentRestaurant];
+            let html = '';
+            data.forEach((cat, catIdx) => {
+                html += `<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <h2 class="bg-gray-50 px-5 py-3 text-lg font-bold text-gray-800 border-b border-gray-100 flex items-center gap-2">
+                        <span class="w-1.5 h-5 bg-indigo-500 rounded-full block"></span>${cat.category}
+                    </h2><div class="divide-y divide-gray-100">`;
+                cat.items.forEach((item, itemIdx) => {
+                    const uk = `${catIdx}-${itemIdx}`;
+                    html += `<div class="p-5 hover:bg-gray-50/50 transition-colors">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div class="flex-grow">
+                                <h3 class="text-lg font-bold text-gray-800">${item.name}</h3>
+                                ${item.desc ? `<p class="text-sm text-gray-500 mt-0.5">${item.desc}</p>` : ''}
+                                <div class="text-indigo-600 font-bold mt-1 text-lg">$${item.price}</div>
+                            </div>
+                            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+                                <button onclick="addOrder('${catIdx}','${itemIdx}')" class="w-full sm:w-auto bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold px-5 py-2 rounded-lg transition-colors whitespace-nowrap shadow-sm border border-indigo-200">+ 新增給目前點餐人</button>
+                            </div>
+                        </div>
+                        <div id="badges-${uk}" class="mt-3 flex flex-wrap gap-2 empty:hidden"></div>
+                    </div>`;
+                });
+                html += `</div></div>`;
+            });
+            container.innerHTML = html;
+            data.forEach((cat, cIdx) => cat.items.forEach((_, iIdx) => renderBadges(cIdx, iIdx)));
+            document.getElementById('date-count').innerText = `本日 ${getTodayOrders().length} 筆點單`;
+        }
+
+        function addOrder(catIdx, itemIdx) {
+            const selectEl = document.getElementById('global-person');
+            const personName = selectEl.value;
+            if (!personName) {
+                showToastMsg('請先在右上角選擇「目前點餐人」！', false);
+                selectEl.focus();
+                selectEl.parentElement.classList.add('animate-bounce');
+                setTimeout(() => selectEl.parentElement.classList.remove('animate-bounce'), 1000);
+                return;
+            }
+            const item = restaurantsData[currentRestaurant][catIdx].items[itemIdx];
+            getTodayOrders().push({
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                itemName: item.name, price: item.price, person: personName,
+                restaurant: currentRestaurant, catIdx, itemIdx
+            });
+            saveState();
+            renderBadges(catIdx, itemIdx);
+            updateTotal();
+            document.getElementById('date-count').innerText = `本日 ${getTodayOrders().length} 筆點單`;
+            showToastMsg(`已幫 ${personName} 記上 ${item.name}`);
+        }
+
+        function removeOrder(orderId, catIdx, itemIdx) {
+            state.orders[currentDate] = getTodayOrders().filter(o => o.id !== orderId);
+            saveState();
+            renderBadges(catIdx, itemIdx);
+            updateTotal();
+            document.getElementById('date-count').innerText = `本日 ${getTodayOrders().length} 筆點單`;
+        }
+
+        function renderBadges(catIdx, itemIdx) {
+            const box = document.getElementById(`badges-${catIdx}-${itemIdx}`);
+            if (!box) return;
+            const item = restaurantsData[currentRestaurant][catIdx].items[itemIdx];
+            const related = getTodayOrders().filter(o => o.itemName === item.name && o.restaurant === currentRestaurant);
+            box.innerHTML = related.map(order => `
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    ${order.person}
+                    <button onclick="removeOrder('${order.id}','${catIdx}','${itemIdx}')" class="text-indigo-400 hover:text-indigo-900 focus:outline-none bg-indigo-100 rounded-full p-0.5 ml-1">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </span>`).join('');
+        }
+
+        function updateTotal() {
+            const total = getTodayOrders().reduce((s, o) => s + o.price, 0);
+            document.getElementById('total-price').innerText = `$${total.toLocaleString()}`;
+            document.getElementById('cart-count').innerText = getTodayOrders().length;
+            const btn = document.getElementById('cart-count').parentElement;
+            btn.classList.add('scale-105');
+            setTimeout(() => btn.classList.remove('scale-105'), 200);
+        }
+
+        /* ============ 後台：人員 ============ */
+        function toggleAdmin() {
+            const p = document.getElementById('admin-panel');
+            p.classList.toggle('hidden');
+            document.getElementById('admin-arrow').innerText = p.classList.contains('hidden') ? '▼' : '▲';
+            if (!p.classList.contains('hidden')) {
+                renderPeopleManageList();
+                if (!document.getElementById('export-month').value) {
+                    document.getElementById('export-month').value = currentDate.slice(0, 7);
+                }
+            }
+        }
+        function renderPeopleManageList() {
+            document.getElementById('people-manage-list').innerHTML = state.people.map((p, i) => `
+                <span class="inline-flex items-center gap-1 bg-gray-100 border border-gray-200 rounded-full pl-3 pr-1 py-1 text-sm">
+                    <span class="cursor-pointer hover:text-indigo-600 font-medium" onclick="renamePerson(${i})" title="點擊改名">${p}</span>
+                    <button onclick="deletePerson(${i})" title="刪除" class="text-red-400 hover:text-white hover:bg-red-500 bg-white rounded-full w-5 h-5 leading-none flex items-center justify-center transition-colors">×</button>
+                </span>`).join('');
+        }
+        function addPerson() {
+            const input = document.getElementById('new-person-input');
+            const name = input.value.trim();
+            if (!name) return showToastMsg('請輸入姓名', false);
+            if (state.people.includes(name)) return showToastMsg('該姓名已存在', false);
+            state.people.push(name);
+            input.value = '';
+            saveState();
+            renderPeopleManageList();
+            refreshPeopleSelect();
+            showToastMsg(`已新增 ${name}`);
+        }
+        function deletePerson(i) {
+            const name = state.people[i];
+            let cnt = 0;
+            Object.values(state.orders).forEach(list => cnt += list.filter(o => o.person === name).length);
+            if (cnt > 0 && !confirm(`${name} 在所有日期共有 ${cnt} 筆點單，刪除會一併移除，確定？`)) return;
+            Object.keys(state.orders).forEach(d => {
+                state.orders[d] = state.orders[d].filter(o => o.person !== name);
+            });
+            state.people.splice(i, 1);
+            saveState();
+            renderPeopleManageList();
+            refreshPeopleSelect();
+            renderMenu();
+            updateTotal();
+            showToastMsg(`已刪除 ${name}`);
+        }
+        function renamePerson(i) {
+            const oldName = state.people[i];
+            const newName = prompt('改名為：', oldName);
+            if (newName === null) return;
+            const t = newName.trim();
+            if (!t) return showToastMsg('姓名不可空白', false);
+            if (t !== oldName && state.people.includes(t)) return showToastMsg('該姓名已存在', false);
+            state.people[i] = t;
+            Object.values(state.orders).forEach(list => list.forEach(o => { if (o.person === oldName) o.person = t; }));
+            saveState();
+            renderPeopleManageList();
+            refreshPeopleSelect();
+            renderMenu();
+            showToastMsg(`已改名為 ${t}`);
+        }
+
+        /* ============ 後台：菜單轉文字 ============ */
+        function generateMenuText() {
+            let txt = `【${currentRestaurant} 菜單】\n\n`;
+            restaurantsData[currentRestaurant].forEach(cat => {
+                txt += `■ ${cat.category}\n`;
+                cat.items.forEach(it => txt += `  ${it.name} $${it.price}${it.desc ? `（${it.desc}）` : ''}\n`);
+                txt += '\n';
+            });
+            document.getElementById('menu-text-output').value = txt.trimEnd();
+        }
+        function copyMenuText() {
+            const ta = document.getElementById('menu-text-output');
+            if (!ta.value) return showToastMsg('請先按「產生文字」', false);
+            ta.select();
+            try { document.execCommand('copy'); showToastMsg('✅ 菜單文字已複製'); }
+            catch (e) { showToastMsg('複製失敗，請手動選取', false); }
+            window.getSelection().removeAllRanges();
+        }
+
+        /* ============ 日結明細 Modal ============ */
+        function openSummaryModal() {
+            if (getTodayOrders().length === 0) return showToastMsg('本日還沒有點任何餐點喔！', false);
+            document.getElementById('summary-restaurant-name').innerText = currentRestaurant;
+            document.getElementById('summary-date').innerText = currentDate;
+            document.getElementById('summary-modal').classList.remove('hidden');
+            document.getElementById('summary-modal').classList.add('flex');
+            const total = getTodayOrders().reduce((s, o) => s + o.price, 0);
+            document.getElementById('summary-total-price').innerText = `$${total.toLocaleString()}`;
+            renderSummaryContent();
+        }
+        function closeSummaryModal() {
+            document.getElementById('summary-modal').classList.add('hidden');
+            document.getElementById('summary-modal').classList.remove('flex');
+        }
+        function switchSummaryTab(view) {
+            currentSummaryView = view;
+            const bi = document.getElementById('tab-btn-item'), bp = document.getElementById('tab-btn-person');
+            const on = "flex-1 py-3 text-center font-bold text-indigo-600 border-b-2 border-indigo-600 transition-colors";
+            const off = "flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors";
+            if (view === 'item') { bi.className = on; bp.className = off; } else { bp.className = on; bi.className = off; }
+            renderSummaryContent();
+        }
+        function renderSummaryContent() {
+            const container = document.getElementById('summary-content');
+            const todays = getTodayOrders();
+            let html = '';
+            currentSummaryText = `【${currentRestaurant} 日結明細 ${currentDate}】\n\n`;
+
+            if (currentSummaryView === 'item') {
+                const itemCounts = {};
+                todays.forEach(o => {
+                    if (!itemCounts[o.itemName]) itemCounts[o.itemName] = { count: 0, price: o.price, people: [] };
+                    itemCounts[o.itemName].count++;
+                    itemCounts[o.itemName].people.push(o.person);
+                });
+                html += '<div class="space-y-3">';
+                Object.keys(itemCounts).sort().forEach(name => {
+                    const d = itemCounts[name];
+                    html += `<div class="bg-white p-3 rounded shadow-sm border border-gray-100 flex justify-between items-center">
+                        <div><span class="font-bold text-lg text-gray-800">${name}</span>
+                        <span class="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-sm font-bold rounded">x${d.count}</span>
+                        <div class="text-sm text-gray-500 mt-1">人員: ${d.people.join(', ')}</div></div>
+                        <div class="font-bold text-indigo-600 text-lg">$${d.price * d.count}</div></div>`;
+                    currentSummaryText += `- ${name} x${d.count} ($${d.price * d.count})\n`;
+                });
+                html += '</div>';
+            } else {
+                const po = {};
+                state.people.forEach(p => po[p] = { total: 0, items: [] });
+                todays.forEach(o => {
+                    if (!po[o.person]) po[o.person] = { total: 0, items: [] };
+                    po[o.person].items.push(o); po[o.person].total += o.price;
+                });
+                html += `<div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full text-sm text-left whitespace-nowrap"><thead class="bg-gray-100 text-gray-700 border-b border-gray-200"><tr>
+                    <th class="px-4 py-3 font-bold">姓名</th><th class="px-4 py-3 font-bold w-full">餐點明細</th>
+                    <th class="px-4 py-3 font-bold text-right">總計</th><th class="px-4 py-3 font-bold text-right text-red-600">自付</th>
+                    <th class="px-4 py-3 font-bold text-right text-green-700">公司餐費</th></tr></thead><tbody class="divide-y divide-gray-100">`;
+                let sumTotal = 0, sumSelf = 0, sumCompany = 0;
+                state.people.forEach(person => {
+                    const d = po[person];
+                    if (d.items.length === 0) {
+                        html += `<tr class="hover:bg-gray-50 text-gray-400"><td class="px-4 py-2 font-medium text-gray-600">${person}</td>
+                            <td class="px-4 py-2">PASS</td><td class="px-4 py-2 text-right">-</td><td class="px-4 py-2 text-right">-</td><td class="px-4 py-2 text-right">-</td></tr>`;
+                        currentSummaryText += `👤 ${person} : PASS\n`;
+                    } else {
+                        const { selfPay, companyPays } = calculatePayment(person, d.total);
+                        const detail = d.items.map(i => `${i.itemName}$${i.price}`).join(' + ');
+                        sumTotal += d.total; sumSelf += selfPay; sumCompany += companyPays;
+                        html += `<tr class="hover:bg-gray-50"><td class="px-4 py-2 font-bold text-gray-800">${person}</td>
+                            <td class="px-4 py-2 text-gray-700 whitespace-normal min-w-[200px]">${detail}</td>
+                            <td class="px-4 py-2 text-right font-bold text-gray-800">$${d.total}</td>
+                            <td class="px-4 py-2 text-right font-bold ${selfPay > 0 ? 'text-red-500' : 'text-gray-400'}">$${selfPay}</td>
+                            <td class="px-4 py-2 text-right font-bold text-green-600">$${companyPays}</td></tr>`;
+                        currentSummaryText += `👤 ${person} (自付$${selfPay} / 公司$${companyPays})\n   ↳ ${detail} = $${d.total}\n`;
+                    }
+                });
+                html += `<tr class="bg-indigo-50 font-bold"><td class="px-4 py-3" colspan="2">合計</td>
+                    <td class="px-4 py-3 text-right text-gray-800">$${sumTotal}</td>
+                    <td class="px-4 py-3 text-right text-red-600">$${sumSelf}</td>
+                    <td class="px-4 py-3 text-right text-green-700">$${sumCompany}</td></tr>`;
+                html += '</tbody></table></div>';
+                currentSummaryText += `\n合計：總額$${sumTotal} / 自付$${sumSelf} / 公司$${sumCompany}\n`;
+            }
+            const total = todays.reduce((s, o) => s + o.price, 0);
+            currentSummaryText += `\n總數量: ${todays.length} 份 / 總金額: $${total.toLocaleString()}`;
+            container.innerHTML = html;
+        }
+        function copySummary() {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = currentSummaryText; ta.style.position = 'fixed'; ta.style.opacity = 0;
+                document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                showToastMsg('✅ 明細已複製到剪貼簿！');
+            } catch (e) { showToastMsg('複製失敗，請手動選取文字', false); }
+        }
+
+        /* ============ CSV 工具 ============ */
+        function downloadCSV(csvContent, filename) {
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+        function csvCell(v) {
+            const s = String(v == null ? '' : v);
+            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        }
+
+        // 本日日結表 CSV（Image 3 精簡版）
+        function exportDayCSV() {
+            const todays = getTodayOrders();
+            if (todays.length === 0) return showToastMsg('本日沒有點單可匯出', false);
+            let csv = `${currentDate} 日結會計表（${currentRestaurant}）\n`;
+            csv += "序號,姓名,餐點明細,總額,自付,公司餐費\n";
+            const po = {}; state.people.forEach(p => po[p] = { total: 0, items: [] });
+            todays.forEach(o => { if (!po[o.person]) po[o.person] = { total: 0, items: [] }; po[o.person].items.push(o); po[o.person].total += o.price; });
+            let idx = 1, gt = 0, gs = 0, gc = 0;
+            state.people.forEach(person => {
+                const d = po[person];
+                if (d.items.length === 0) { csv += `${idx},${csvCell(person)},PASS,0,0,0\n`; }
+                else {
+                    const { selfPay, companyPays } = calculatePayment(person, d.total);
+                    const detail = d.items.map(i => `${i.itemName}$${i.price}`).join('+');
+                    csv += `${idx},${csvCell(person)},${csvCell(detail)},${d.total},${selfPay},${companyPays}\n`;
+                    gt += d.total; gs += selfPay; gc += companyPays;
+                }
+                idx++;
+            });
+            csv += `,,合計,${gt},${gs},${gc}\n`;
+            downloadCSV(csv, `日結表_${currentDate}_${currentRestaurant}.csv`);
+            showToastMsg('✅ 已下載本日日結表');
+        }
+
+        /* ============ 月結：核心運算 ============ */
+        // 回傳某月每人每日的三種金額
+        function computeMonth(ym) { // ym = "2026-07"
+            const [y, m] = ym.split('-').map(Number);
+            const daysInMonth = new Date(y, m, 0).getDate();
+            const people = state.people;
+            // matrix[person][day] = {total, self, company, detail, restaurant}
+            const matrix = {};
+            people.forEach(p => matrix[p] = {});
+            for (let day = 1; day <= daysInMonth; day++) {
+                const ds = `${ym}-${String(day).padStart(2, '0')}`;
+                const list = state.orders[ds] || [];
+                if (list.length === 0) continue;
+                const po = {};
+                list.forEach(o => { if (!po[o.person]) po[o.person] = { total: 0, items: [], restaurant: o.restaurant }; po[o.person].total += o.price; po[o.person].items.push(o); });
+                Object.keys(po).forEach(person => {
+                    const d = po[person];
+                    const { selfPay, companyPays } = calculatePayment(person, d.total);
+                    if (!matrix[person]) matrix[person] = {};
+                    matrix[person][day] = {
+                        total: d.total, self: selfPay, company: companyPays,
+                        detail: d.items.map(i => `${i.itemName}$${i.price}`).join('+'),
+                        restaurant: d.restaurant
+                    };
+                });
+            }
+            return { y, m, daysInMonth, people, matrix };
+        }
+
+        // 月報表網格 CSV（Image 2 格式）：三張表
+        function exportMonthlyGrid() {
+            const ym = document.getElementById('export-month').value;
+            if (!ym) return showToastMsg('請先選擇月份', false);
+            const { y, m, daysInMonth, people, matrix } = computeMonth(ym);
+            const fields = [['total', '餐點總額'], ['company', '公司餐費'], ['self', '員工自付']];
+            let csv = '';
+            fields.forEach(([key, label]) => {
+                csv += `${y}年${m}月 ${label}表（見紅就休；H=放假）\n`;
+                let header = '姓名';
+                for (let d = 1; d <= daysInMonth; d++) header += `,${d}`;
+                header += ',合計';
+                csv += header + '\n';
+                people.forEach(person => {
+                    let row = csvCell(person);
+                    let sum = 0;
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const ds = `${ym}-${String(d).padStart(2, '0')}`;
+                        const hol = isHoliday(ds);
+                        const cell = matrix[person] && matrix[person][d];
+                        if (cell) { row += `,${cell[key]}`; sum += cell[key]; }
+                        else if (hol.holiday) { row += ',H'; }
+                        else { row += ','; }
+                    }
+                    row += `,${sum}`;
+                    csv += row + '\n';
+                });
+                // 每日總計列
+                let totalRow = '每日總計';
+                let grand = 0;
+                for (let d = 1; d <= daysInMonth; d++) {
+                    let dayTotal = 0;
+                    people.forEach(person => { const c = matrix[person] && matrix[person][d]; if (c) dayTotal += c[key]; });
+                    totalRow += `,${dayTotal || ''}`;
+                    grand += dayTotal;
+                }
+                totalRow += `,${grand}`;
+                csv += totalRow + '\n\n';
+            });
+            downloadCSV(csv, `月報表網格_${ym}.csv`);
+            showToastMsg('✅ 已下載月報表網格（三張表）');
+        }
+
+        // 整月日結表 CSV：每天一區塊，逐人列出明細
+        function exportMonthlyDaily() {
+            const ym = document.getElementById('export-month').value;
+            if (!ym) return showToastMsg('請先選擇月份', false);
+            const { daysInMonth } = computeMonth(ym);
+            const wdMap = ['日','一','二','三','四','五','六'];
+            let csv = `${ym} 整月日結會計表\n\n`;
+            let monthTotal = 0, monthSelf = 0, monthCompany = 0;
+            for (let day = 1; day <= daysInMonth; day++) {
+                const ds = `${ym}-${String(day).padStart(2, '0')}`;
+                const list = state.orders[ds] || [];
+                const hol = isHoliday(ds);
+                const wd = wdMap[new Date(ds + 'T00:00:00').getDay()];
+                if (list.length === 0) {
+                    if (hol.holiday) csv += `${ds}（週${wd}）,${hol.name} 放假\n\n`;
+                    continue;
+                }
+                const restaurant = list[0].restaurant;
+                csv += `${ds}（週${wd}）${hol.holiday ? '【' + hol.name + '】' : ''} 餐廳：${restaurant}\n`;
+                csv += "序號,姓名,餐點明細,總額,自付,公司餐費\n";
+                const po = {};
+                list.forEach(o => { if (!po[o.person]) po[o.person] = { total: 0, items: [] }; po[o.person].total += o.price; po[o.person].items.push(o); });
+                let idx = 1, dt = 0, dsf = 0, dc = 0;
+                Object.keys(po).forEach(person => {
+                    const d = po[person];
+                    const { selfPay, companyPays } = calculatePayment(person, d.total);
+                    const detail = d.items.map(i => `${i.itemName}$${i.price}`).join('+');
+                    csv += `${idx},${csvCell(person)},${csvCell(detail)},${d.total},${selfPay},${companyPays}\n`;
+                    dt += d.total; dsf += selfPay; dc += companyPays; idx++;
+                });
+                csv += `,,當日合計,${dt},${dsf},${dc}\n\n`;
+                monthTotal += dt; monthSelf += dsf; monthCompany += dc;
+            }
+            csv += `====== 全月合計 ======\n,,總額,${monthTotal}\n,,自付,${monthSelf}\n,,公司餐費,${monthCompany}\n`;
+            downloadCSV(csv, `整月日結表_${ym}.csv`);
+            showToastMsg('✅ 已下載整月日結表');
+        }
+
+        function previewMonth() {
+            const ym = document.getElementById('export-month').value;
+            if (!ym) return showToastMsg('請先選擇月份', false);
+            const { y, m, daysInMonth, people, matrix } = computeMonth(ym);
+            let daysWithData = 0, monthCompany = 0, monthSelf = 0, monthTotal = 0;
+            for (let d = 1; d <= daysInMonth; d++) {
+                let has = false;
+                people.forEach(p => { const c = matrix[p] && matrix[p][d]; if (c) { has = true; monthTotal += c.total; monthSelf += c.self; monthCompany += c.company; } });
+                if (has) daysWithData++;
+            }
+            const box = document.getElementById('month-preview');
+            box.innerHTML = `<div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                <p class="font-bold text-indigo-800 mb-1">${y}年${m}月 概況</p>
+                <p class="text-gray-700">有點餐天數：<b>${daysWithData}</b> 天</p>
+                <p class="text-gray-700">全月餐點總額：<b>$${monthTotal.toLocaleString()}</b></p>
+                <p class="text-green-700">公司餐費合計：<b>$${monthCompany.toLocaleString()}</b></p>
+                <p class="text-red-600">員工自付合計：<b>$${monthSelf.toLocaleString()}</b></p>
+            </div>`;
+        }
+
+        /* ============ 備份 / 還原 ============ */
+        function exportBackup() {
+            const data = JSON.stringify(state, null, 2);
+            const blob = new Blob([data], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `團購資料備份_${toDateStr(new Date())}.json`;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            showToastMsg('✅ 已匯出備份 JSON');
+        }
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (!parsed.people || !parsed.orders) throw new Error('格式錯誤');
+                    if (!confirm('匯入將覆蓋目前所有資料，確定？（建議先匯出目前備份）')) return;
+                    state = parsed;
+                    saveState();
+                    initTabs(); renderMenu(); updateTotal(); renderPeopleManageList();
+                    showToastMsg('✅ 已還原備份資料');
+                } catch (err) { showToastMsg('匯入失敗：檔案格式不正確', false); }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        function clearMonthConfirm() {
+            const ym = document.getElementById('export-month').value || currentDate.slice(0, 7);
+            const cnt = Object.keys(state.orders).filter(d => d.startsWith(ym)).reduce((s, d) => s + state.orders[d].length, 0);
+            if (cnt === 0) return showToastMsg(`${ym} 沒有資料`, false);
+            if (!confirm(`確定清空 ${ym} 全月共 ${cnt} 筆點單？此動作無法復原（建議先備份）`)) return;
+            Object.keys(state.orders).forEach(d => { if (d.startsWith(ym)) delete state.orders[d]; });
+            saveState();
+            renderMenu(); updateTotal();
+            showToastMsg(`✅ 已清空 ${ym} 資料`);
+        }
+
+        /* ============ 初始化 ============ */
+        document.getElementById('summary-modal').addEventListener('click', function (e) { if (e.target === this) closeSummaryModal(); });
+        document.getElementById('work-date').addEventListener('change', onDateChange);
+
+        window.onload = () => {
+            loadState();
+            document.getElementById('work-date').value = currentDate;
+            renderDateBadge();
+            initTabs();
+            renderMenu();
+            updateTotal();
+        };
+    </script>
+</body>
+</html>
